@@ -1,0 +1,141 @@
+# Heating dashboard (three views: Whole house, Rooms, Dehumidifier)
+# Open the Heating dashboard → pencil → three dots → Raw configuration editor →
+# replace everything with this.
+#
+# Needs: packages/hive_call_for_heat.yaml and the resources /local/heating-dial-card.js?v=4
+# and /local/dehumidifier-card.js?v=2
+
+title: Heating
+views:
+  - title: Whole house
+    path: house
+    icon: mdi:home-thermometer
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Whole house
+            icon: mdi:home-thermometer
+          - type: custom:heating-dial-card
+            show_name: false
+            boiler_entity: climate.turnuptheheat
+            grid_options:
+              columns: full
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: History
+            icon: mdi:chart-line
+          - type: custom:heating-stats-card
+            boiler_entity: climate.turnuptheheat
+            # outdoor_entity: sensor.annex_parking_sensor_temperature  # check the real entity ID
+            hours: 24
+            ranges: [6, 24, 72]
+            grid_options:
+              columns: full
+          - type: heading
+            heading: Boiler
+            icon: mdi:fire
+          - type: tile
+            entity: climate.turnuptheheat
+            name: Hive
+            state_content:
+              - hvac_action
+              - temperature
+          - type: tile
+            entity: binary_sensor.heat_demand
+            name: Rooms calling
+            state_content:
+              - state
+              - rooms_calling
+          - type: tile
+            entity: input_boolean.heating_pause_boiler_control
+            grid_options:
+              columns: full
+          - type: heading
+            heading: Dehumidifier
+            icon: mdi:air-humidifier
+          - type: custom:dehumidifier-card
+            entity: humidifier.landing_arete_r_two_12l_dehumidifier_air_purifier
+            name: Landing
+            grid_options:
+              columns: full
+
+  - title: Rooms
+    path: rooms
+    icon: mdi:radiator
+    type: sections
+    max_columns: 4
+    sections:
+      - type: grid
+        column_span: 4
+        cards:
+          - type: heading
+            heading: Rooms
+            icon: mdi:radiator
+          # Every Better Thermostat room appears automatically.
+          # To choose or order them yourself, add for example:
+          #   rooms:
+          #     - climate.library
+          #     - entity: climate.kitchen
+          #       controls:
+          #         - sensor.kitchen_radiator_battery
+          - type: custom:heating-rooms-card
+            history: true # pair each room dial with its history panel
+            history_hours: 24
+            # Needed for the heat-loss coefficient. Use the same outdoor sensor
+            # you picked in Better Thermostat (check the real entity ID):
+            # outdoor_entity: sensor.annex_parking_sensor_temperature
+            min_width_history: 620
+            card:
+              dial_size: 220
+
+  - title: Dehumidifier
+    path: dehumidifier
+    icon: mdi:air-humidifier
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Landing dehumidifier
+            icon: mdi:air-humidifier
+          - type: custom:dehumidifier-card
+            entity: humidifier.landing_arete_r_two_12l_dehumidifier_air_purifier
+            show_name: false
+            history: false # the history is in the next column
+            dial_size: 280
+            grid_options:
+              columns: full
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: History
+            icon: mdi:chart-line
+          - type: custom:dehumidifier-card
+            entity: humidifier.landing_arete_r_two_12l_dehumidifier_air_purifier
+            show_controls: false # graph and stats only
+            hours: 72
+            ranges: [24, 72, 168]
+            grid_options:
+              columns: full
+          - type: heading
+            heading: Diagnostics
+            icon: mdi:alert-circle-outline
+          - type: tile
+            entity: binary_sensor.landing_arete_r_two_12l_dehumidifier_air_purifier_tank_full
+            name: Tank full
+          - type: tile
+            entity: binary_sensor.landing_arete_r_two_12l_dehumidifier_air_purifier_defrost
+            name: Defrost
+          - type: tile
+            entity: binary_sensor.landing_arete_r_two_12l_dehumidifier_air_purifier_temperature_error
+            name: Temperature error
+          - type: tile
+            entity: binary_sensor.landing_arete_r_two_12l_dehumidifier_air_purifier_wet
+            name: Wet

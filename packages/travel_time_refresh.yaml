@@ -1,0 +1,34 @@
+# Save as /config/packages/travel_time_refresh.yaml
+# Requires in configuration.yaml (already there for hive_call_for_heat):
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Google Maps Travel Time polls every 10 minutes per sensor (~4,400 calls a month
+# each), and the Routes API gives 5,000 free calls a month. This refreshes both
+# sensors every 15 minutes from 06:00 to 20:00 instead (~1,700 a month each).
+#
+# Also turn off the built-in polling, or both run:
+#   Settings > Devices & services > Google Maps Travel Time > ⋮ > System options >
+#   Enable polling for changes: off
+#
+# travel-time-card builds "usual" times in 15-minute slots and treats readings
+# older than 2 hours as missing, so the graph shows 06:00 to about 22:00.
+
+automation:
+  - id: travel_time_refresh
+    alias: Travel time refresh
+    description: Update the Google travel time sensors every 15 minutes from 06:00 to 20:00.
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        minutes: "/15"
+    conditions:
+      - condition: time
+        after: "06:00:00"
+        before: "20:00:00"
+    actions:
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.google_travel_time
+            - sensor.work_besafety

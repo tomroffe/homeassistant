@@ -1,0 +1,48 @@
+# Lighting dashboard (replaces the auto-generated Lights dashboard)
+# Settings → Dashboards → Add dashboard → New dashboard from scratch, title
+# "Lighting", URL "dashboard-lighting". Open it → pencil → three dots → Raw
+# configuration editor → replace everything with this.
+#
+# Needs the resource /local/lighting-card.js?v=1
+#
+# Lights, rooms and floors come from the area and floor registries, so
+# assigning a light to an area in HA is enough to move it here.
+
+title: Lighting
+views:
+  - title: Lights
+    path: lights
+    icon: mdi:lightbulb-group
+    type: panel          # one card, full width; the card lays rooms out in columns itself
+    cards:
+      - type: custom:lighting-card
+        # Areas shown under "Outside". Default: every area with no floor
+        # (Garden, Driveway). Check the area IDs in Settings → Areas.
+        # outside_areas: [front_garden, front_door, alleyway, garden, driveway]
+        # outside_name: Outside
+        #
+        # Smart plugs that power lamps (switch.*). Set `area` if the plug
+        # isn't in one.
+        # include:
+        #   - switch.reading_lamp_plug
+        # entities:
+        #   switch.reading_lamp_plug: { area: library, icon: mdi:floor-lamp }
+        #   light.hue_smart_plug_1: { hide: true }
+        #
+        # history: true          # on-time strips (since midnight)
+        # history_hours: 24      # rolling window instead of "today"
+        # scenes: true           # scene chips per room
+        # presets:               # replaces Relax / Read / Bright / Night; `false` hides them
+        #   - { name: Relax, icon: mdi:sofa-outline, brightness: 40, kelvin: 2200 }
+        #   - { name: Movie, icon: mdi:movie-open-outline, brightness: 15, kelvin: 2200 }
+        #   - { name: Party, icon: mdi:party-popper, brightness: 80, hs_color: [300, 80] }
+
+# One room on another dashboard (e.g. the House view). Paste as a Manual card:
+#
+# type: custom:lighting-card
+# areas: [library]
+#
+# One floor, with Outside:
+#
+# type: custom:lighting-card
+# floors: [ground_floor, outside]

@@ -1,0 +1,18 @@
+# Landing dehumidifier (Arete Two 12L, Tuya). Paste as a Manual card.
+# Needs the resource /local/dehumidifier-card.js?v=2
+# Also on the Heating dashboard, under Boiler (heating-dashboard.yaml).
+#
+# Only `entity` is required. The humidity sensor, timer, child lock, tank and
+# fault sensors are found from the same device.
+type: custom:dehumidifier-card
+entity: humidifier.landing_arete_r_two_12l_dehumidifier_air_purifier
+name: Landing dehumidifier
+# step: 5                  # target step; this model only takes multiples of 5
+# history: true            # humidity graph and stats
+# hours: 24
+# ranges: [6, 24, 72]
+# tolerance: 2             # "On target" allows this many % above the target
+# temperature_entity: sensor.landing_temperature   # adds dew point (check the real ID)
+# controls:                # replaces the automatic timer / child lock tiles
+#   - select.landing_arete_r_two_12l_dehumidifier_air_purifier_countdown
+#   - switch.landing_arete_r_two_12l_dehumidifier_air_purifier_child_lock

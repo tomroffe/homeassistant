@@ -1,0 +1,27 @@
+# Needs the resource /local/motion-activity-card.js?v=2 (JavaScript module).
+# Check each entity ID on the device page (Settings → Devices → Front Door).
+
+# Front door: add as a new card
+type: custom:motion-activity-card
+title: Front door
+camera_entity: camera.front_door_high_resolution_channel
+url: https://cloud-key.mothership.sm4rt.io/protect/
+hours: 24
+entities:
+  - binary_sensor.front_door_motion
+  - binary_sensor.front_door_person_detected
+  - binary_sensor.front_door_vehicle_detected
+  # The doorbell button, if it shows on the device page (often an event entity):
+  # - event.front_door_doorbell
+grid_options:
+  columns: full
+
+---
+# Car park: replaces the history graph card
+type: custom:motion-activity-card
+title: Car Park Motion Detection
+entity: binary_sensor.annex_parking_sensor_motion
+url: https://cloud-key.mothership.sm4rt.io/protect/
+hours: 24
+grid_options:
+  columns: full

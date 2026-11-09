@@ -1,0 +1,330 @@
+# Hive call-for-heat + whole-house presets for Better Thermostat rooms  (v2.1)
+# Save as /config/packages/hive_call_for_heat.yaml
+# Requires in configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Hive heating zone: climate.turnuptheheat
+# Rooms: every Better Thermostat climate entity is picked up automatically.
+
+input_boolean:
+  heating_pause_boiler_control:
+    name: Pause boiler control
+    icon: mdi:pause-circle-outline
+
+input_select:
+  house_heating_preset:
+    name: House heating preset
+    icon: mdi:home-thermometer
+    options:
+      - Comfort
+      - Eco
+      - Sleep
+      - Away
+      - Boost
+      - Manual
+      - "Off" # quoted, otherwise YAML reads it as false
+
+input_number:
+  heating_preset_comfort:
+    name: Comfort
+    icon: mdi:sofa-outline
+    min: 5
+    max: 28
+    step: 0.5
+    unit_of_measurement: "°C"
+  heating_preset_eco:
+    name: Eco
+    icon: mdi:leaf
+    min: 5
+    max: 28
+    step: 0.5
+    unit_of_measurement: "°C"
+  heating_preset_sleep:
+    name: Sleep
+    icon: mdi:weather-night
+    min: 5
+    max: 28
+    step: 0.5
+    unit_of_measurement: "°C"
+  heating_preset_away:
+    name: Away
+    icon: mdi:home-export-outline
+    min: 5
+    max: 28
+    step: 0.5
+    unit_of_measurement: "°C"
+  heating_preset_boost:
+    name: Boost
+    icon: mdi:rocket-launch-outline
+    min: 5
+    max: 28
+    step: 0.5
+    unit_of_measurement: "°C"
+  heating_preset_manual:
+    name: Manual
+    icon: mdi:hand-back-right-outline
+    min: 5
+    max: 28
+    step: 0.5
+    unit_of_measurement: "°C"
+  heating_boost_hours:
+    name: Boost length
+    icon: mdi:timer-outline
+    min: 0.25 # 15-minute steps
+    max: 4
+    step: 0.25
+    unit_of_measurement: h
+
+input_text:
+  house_heating_previous_preset:
+    name: Previous house heating preset
+    max: 20
+
+timer:
+  house_heating_boost:
+    name: Heating boost
+    icon: mdi:rocket-launch-outline
+    restore: true
+
+template:
+  - binary_sensor:
+      - name: "Heat demand"
+        unique_id: heat_demand_any_room
+        delay_on: "00:02:00"
+        delay_off: "00:05:00"
+        state: >
+          {% set rooms = integration_entities('better_thermostat') | select('match', 'climate\.') | list %}
+          {% set ns = namespace(n=0) %}
+          {% for e in rooms %}
+            {% set a = state_attr(e, 'hvac_action') %}
+            {% set c = state_attr(e, 'current_temperature') | float(99) %}
+            {% set t = state_attr(e, 'temperature') | float(0) %}
+            {% if states(e) not in ['off', 'unavailable', 'unknown'] and (a == 'heating' or c < t - 0.3) %}
+              {% set ns.n = ns.n + 1 %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.n > 0 }}
+        attributes:
+          rooms_calling: >
+            {% set rooms = integration_entities('better_thermostat') | select('match', 'climate\.') | list %}
+            {% set ns = namespace(r=[]) %}
+            {% for e in rooms %}
+              {% set c = state_attr(e, 'current_temperature') | float(99) %}
+              {% set t = state_attr(e, 'temperature') | float(0) %}
+              {% if states(e) not in ['off', 'unavailable', 'unknown'] and (state_attr(e, 'hvac_action') == 'heating' or c < t - 0.3) %}
+                {% set ns.r = ns.r + [state_attr(e, 'friendly_name')] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.r | join(', ') if ns.r else 'none' }}
+
+automation:
+  # 1. Fire the boiler through Hive whenever any room needs heat.
+  - id: hive_call_for_heat
+    alias: "Hive – call for heat from room thermostats"
+    mode: restart
+    variables:
+      hive: climate.turnuptheheat
+      on_temp: 25 # high enough that Hive always fires the boiler
+      off_temp: 12 # setback / frost protection if HA stops
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.heat_demand
+        to:
+          - "on"
+          - "off"
+      - trigger: state
+        entity_id: input_boolean.heating_pause_boiler_control
+        to: "off"
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        minutes: "/30" # resync in case Hive was changed manually or missed a command
+    conditions:
+      - condition: state
+        entity_id: input_boolean.heating_pause_boiler_control
+        state: "off"
+    actions:
+      - variables:
+          want: "{{ on_temp if is_state('binary_sensor.heat_demand', 'on') else off_temp }}"
+      - if:
+          - condition: template
+            value_template: "{{ not is_state(hive, 'heat') }}"
+        then:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: "{{ hive }}"
+            data:
+              hvac_mode: heat
+      - if:
+          - condition: template
+            value_template: "{{ state_attr(hive, 'temperature') | float(0) != want | float(0) }}"
+        then:
+          - action: climate.set_temperature
+            target:
+              entity_id: "{{ hive }}"
+            data:
+              temperature: "{{ want }}"
+
+  # 2. Whole-house preset: set every room to the preset's temperature (or off).
+  - id: house_heating_apply_preset
+    alias: "House heating – apply preset to all rooms"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_select.house_heating_preset
+        id: preset
+      - trigger: state
+        entity_id:
+          - input_number.heating_preset_comfort
+          - input_number.heating_preset_eco
+          - input_number.heating_preset_sleep
+          - input_number.heating_preset_away
+          - input_number.heating_preset_boost
+          - input_number.heating_preset_manual
+        id: temperature
+    conditions:
+      - condition: template
+        value_template: >
+          {{ trigger.to_state is not none
+             and trigger.to_state.state not in ['unknown', 'unavailable']
+             and (trigger.id == 'preset'
+                  or trigger.entity_id == 'input_number.heating_preset_' ~ (states('input_select.house_heating_preset') | lower)) }}
+    actions:
+      - variables:
+          preset: "{{ states('input_select.house_heating_preset') }}"
+          rooms: >
+            {{ integration_entities('better_thermostat') | select('match', 'climate\.')
+               | reject('is_state', ['unavailable', 'unknown']) | list }}
+          temp: "{{ states('input_number.heating_preset_' ~ (preset | lower)) | float(0) }}"
+      - condition: template
+        value_template: "{{ rooms | count > 0 }}"
+      - if:
+          - condition: template
+            value_template: "{{ preset == 'Off' }}"
+        then:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: "{{ rooms }}"
+            data:
+              hvac_mode: "off"
+        else:
+          - variables:
+              rooms_off: >
+                {{ expand(rooms) | rejectattr('state', 'eq', 'heat') | map(attribute='entity_id') | list }}
+              rooms_in_preset: >
+                {{ expand(rooms) | selectattr('attributes.preset_mode', 'defined')
+                   | rejectattr('attributes.preset_mode', 'in', ['none', none])
+                   | map(attribute='entity_id') | list }}
+          # A room on its own Better Thermostat preset would ignore the house temperature
+          - if:
+              - condition: template
+                value_template: "{{ rooms_in_preset | count > 0 }}"
+            then:
+              - action: climate.set_preset_mode
+                continue_on_error: true
+                target:
+                  entity_id: "{{ rooms_in_preset }}"
+                data:
+                  preset_mode: none
+          - if:
+              - condition: template
+                value_template: "{{ rooms_off | count > 0 }}"
+            then:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: "{{ rooms_off }}"
+                data:
+                  hvac_mode: heat
+              - delay:
+                  seconds: 2
+          - action: climate.set_temperature
+            target:
+              entity_id: "{{ rooms }}"
+            data:
+              temperature: "{{ temp }}"
+
+  # 3. Boost runs for the boost length, then returns to the previous preset.
+  #    Also remembers the last normal preset so the power button can restore it.
+  - id: house_heating_boost_timer
+    alias: "House heating – boost timer"
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: input_select.house_heating_preset
+        id: changed
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.house_heating_boost
+        id: finished
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: changed
+            sequence:
+              - if:
+                  - condition: template
+                    value_template: >
+                      {{ trigger.from_state is not none
+                         and trigger.from_state.state in ['Comfort', 'Eco', 'Sleep', 'Away', 'Manual'] }}
+                then:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: input_text.house_heating_previous_preset
+                    data:
+                      value: "{{ trigger.from_state.state }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ trigger.to_state.state == 'Boost' }}"
+                then:
+                  - action: timer.start
+                    target:
+                      entity_id: timer.house_heating_boost
+                    data:
+                      duration: >
+                        {{ ((states('input_number.heating_boost_hours') | float(1)) * 3600) | int
+                           | timestamp_custom('%H:%M:%S', false) }}
+                else:
+                  - action: timer.cancel
+                    target:
+                      entity_id: timer.house_heating_boost
+          - conditions:
+              - condition: trigger
+                id: finished
+            sequence:
+              - action: input_select.select_option
+                target:
+                  entity_id: input_select.house_heating_preset
+                data:
+                  option: >
+                    {% set p = states('input_text.house_heating_previous_preset') %}
+                    {{ p if p in ['Comfort', 'Eco', 'Sleep', 'Away', 'Manual'] else 'Comfort' }}
+
+  # 4. First start only: give the preset temperatures sensible values
+  #    (new number helpers start at their minimum, 5 °C).
+  - id: house_heating_seed_defaults
+    alias: "House heating – set default preset temperatures"
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - repeat:
+          for_each:
+            - { preset: comfort, temp: 21 }
+            - { preset: eco, temp: 19 }
+            - { preset: sleep, temp: 17 }
+            - { preset: away, temp: 15 }
+            - { preset: boost, temp: 23 }
+            - { preset: manual, temp: 20 }
+          sequence:
+            - if:
+                - condition: template
+                  value_template: "{{ states('input_number.heating_preset_' ~ repeat.item.preset) | float(5) <= 5 }}"
+              then:
+                - action: input_number.set_value
+                  target:
+                    entity_id: "input_number.heating_preset_{{ repeat.item.preset }}"
+                  data:
+                    value: "{{ repeat.item.temp }}"

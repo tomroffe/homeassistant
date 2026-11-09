@@ -1,0 +1,24 @@
+# Waste collection section – replaces the heading + five tile cards.
+# Needs the resource /local/waste-collection-card.js?v=3 (JavaScript module).
+type: grid
+column_span: 1
+cards:
+  - type: heading
+    heading: Waste Collection Schedule
+    heading_style: title
+    icon: mdi:delete-empty
+  - type: custom:waste-collection-card
+    grid_options:
+      columns: full
+    entities:
+      - entity: sensor.waste_collection_schedule_food_waste
+        name: Food Waste
+      - entity: sensor.waste_collection_schedule_garden_waste
+        name: Garden Waste
+      - entity: sensor.waste_collection_schedule_glass
+        name: Glass
+      - entity: sensor.waste_collection_schedule_mixed_recycling
+        name: Mixed recycling
+      - entity: sensor.waste_collection_schedule_non_recyclable_rubbish
+        name: Non-recyclable rubbish
+        color: "#9aa0a6" # grey, so the bin shows up on the dark theme

@@ -1,0 +1,16 @@
+# Card YAML for the appliance energy card (replaces the statistics-graph card).
+# Needs the resource /local/energy-usage-card.js?v=1 (JavaScript module).
+type: custom:energy-usage-card
+title: Appliances
+entities:
+  - entity: sensor.washing_machine_energy
+    name: Washing Machine
+    color: "#42a5f5"
+    # power: sensor.washing_machine_power   # found automatically if it has this name
+  - entity: sensor.tumble_dryer_energy
+    name: Tumble Dryer
+    color: "#9ccc65"
+range: 30d
+# Uncomment to show costs and the off-peak share:
+# price: 0.245                 # £ per kWh, or a sensor such as sensor.octopus_current_rate
+# off_peak: ["00:30", "07:30"]

@@ -1,0 +1,22 @@
+# Card YAML for the weather, air quality and travel cards (paste each card on its own).
+# Needs these resources (JavaScript module):
+#   /local/weather-forecast-card.js?v=1
+#   /local/air-quality-card.js?v=1
+#   /local/travel-time-card.js?v=1
+
+# Weather: replaces the 18 Bergholt Road weather tiles
+type: custom:weather-forecast-card
+entity: weather.bergholt_road
+---
+# Air quality: replaces the 12 Bergholt Road air quality tiles
+type: custom:air-quality-card
+prefix: sensor.bergholt_road
+---
+# Travel time: both routes in one card
+type: custom:travel-time-card
+entities:
+  - entity: sensor.google_travel_time
+    name: Work
+  - entity: sensor.work_besafety
+    name: BeSafety
+days: 14
